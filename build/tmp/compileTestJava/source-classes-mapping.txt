@@ -1,0 +1,2 @@
+kz/hibernate/HibernateRunnerTest.java
+ kz.hibernate.HibernateRunnerTest
