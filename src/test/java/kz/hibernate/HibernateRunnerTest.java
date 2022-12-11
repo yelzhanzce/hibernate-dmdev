@@ -1,14 +1,20 @@
 package kz.hibernate;
 
 import kz.hibernate.entity.Company;
+import kz.hibernate.entity.Company_;
 import kz.hibernate.entity.User;
 import kz.hibernate.util.HibernateUtil;
 import lombok.Cleanup;
 import org.hibernate.Hibernate;
+import org.hibernate.Session;
 import org.junit.jupiter.api.Test;
 
 import javax.persistence.Column;
 import javax.persistence.Table;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Root;
+import javax.persistence.criteria.SetJoin;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -17,19 +23,43 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 class HibernateRunnerTest {
 
 
+    @Test
+    void criteriaApi() {
+        try (var factory = HibernateUtil.buildSessionFactory();
+             var session = factory.openSession()) {
+            session.beginTransaction();
+            var google = findAllByCompanyName(session, "Google");
+
+            System.out.println(google.size());
+        }
+    }
+
+    public List<User> findAllByCompanyName(Session session, String companyName) {
+        var cb = session.getCriteriaBuilder();
+        var criteria = cb.createQuery(User.class);
+        var company = criteria.from(Company.class);
+        var users = company.join(Company_.users);
+
+        criteria.select(users).where(
+                cb.equal(company.get(Company_.name), companyName)
+        );
+
+        return session.createQuery(criteria).list();
+    }
 
 
     @Test
-    void lazyInit(){
+    void lazyInit() {
         Company company;
-        try(var factory = HibernateUtil.buildSessionFactory();
-            var session = factory.openSession()){
+        try (var factory = HibernateUtil.buildSessionFactory();
+             var session = factory.openSession()) {
             session.beginTransaction();
             company = session.get(Company.class, 6);
             Hibernate.initialize(company.getUsers());
@@ -43,7 +73,7 @@ class HibernateRunnerTest {
 
 
     @Test
-    void deleteCompany(){
+    void deleteCompany() {
         @Cleanup var factory = HibernateUtil.buildSessionFactory();
         @Cleanup var session = factory.openSession();
 
@@ -59,7 +89,7 @@ class HibernateRunnerTest {
 
 
     @Test
-    void addUserToCompany(){
+    void addUserToCompany() {
         @Cleanup var factory = HibernateUtil.buildSessionFactory();
         @Cleanup var session = factory.openSession();
 
@@ -81,9 +111,8 @@ class HibernateRunnerTest {
     }
 
 
-
     @Test
-    void checkOneToMany(){
+    void checkOneToMany() {
         @Cleanup var factory = HibernateUtil.buildSessionFactory();
         @Cleanup var session = factory.openSession();
 
